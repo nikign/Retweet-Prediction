@@ -1,7 +1,7 @@
 library(MASS)
 
-data <- read.csv('data.csv')
-data <- as.data.frame(data)
+#data <- read.csv('data.csv')
+#data <- as.data.frame(data)
 
 apply(data,2,function(x) sum(is.na(x)))
 index <- sample(1:nrow(data),round(0.8*nrow(data)))
@@ -28,10 +28,10 @@ print('training')
 #train
 n <- names(train_)
 f <- as.formula(paste("rt_count ~", paste(n[!n %in% "rt_count"], collapse = " + ")))
-nn <- neuralnet(f,data=train_,hidden=c(2,1),linear.output=F)
+nn <- neuralnet(f,data=train_,hidden=c(2),linear.output=F)
 print('testing')
 #test
-pr.nn <- compute(nn,test_[1:4]) 
+pr.nn <- compute(nn,test_[1:5]) 
 pr.nn_ <- pr.nn$net.result*(max(data$rt_count)-min(data$rt_count))+min(data$rt_count)
 test.r <- (test_$rt_count)*(max(data$rt_count)-min(data$rt_count))+min(data$rt_count)
 MSE.nn <- sum((test.r - pr.nn_)^2)/nrow(test_)
@@ -62,7 +62,7 @@ for(i in 1:k){
     
     nn <- neuralnet(f,data=train.cv,hidden=c(2),linear.output=F)
     
-    pr.nn <- compute(nn,test.cv[,1:4])
+    pr.nn <- compute(nn,test.cv[,1:5])
     pr.nn <- pr.nn$net.result*(max(data$rt_count)-min(data$rt_count))+min(data$rt_count)
     
     test.cv.r <- (test.cv$rt_count)*(max(data$rt_count)-min(data$rt_count))+min(data$rt_count)

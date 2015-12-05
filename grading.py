@@ -127,18 +127,22 @@ def calc_baseline():
     final_err = err_sum*1.0/err_count
     print 'final_err: ', final_err
     # err = 1568465.62994
- 
+
+total_favs = {}
+
 def load_grades():
-    global grades2
+    global grades2, total_favs
     grades2_file = open('grades2.txt', 'r')
     grades2 = eval(grades2_file.read())
+    fav_file = open('fav.txt', 'r')
+    total_favs = eval(fav_file.read())
 
 def create_data_frames():
     load_dicts()
     load_grades()
     data_file = open('data.csv', 'w')
-    data_file.write('hashtags, mentions, link, grade, rt_count')
-    global total_tweets, retweeted_by, grades2
+    data_file.write('hashtags, mentions, link, grade, fav_count, rt_count\n')
+    global total_tweets, retweeted_by, grades2, total_favs
 
     # train_files = random.sample(json_files, 2)
     json_files = [f for f in listdir('../StreamingAPITrackData') if f.endswith('.json')]
@@ -167,7 +171,8 @@ def create_data_frames():
             link = '1' if 'urls' in obj['entities'] and len(obj['entities']['urls']) > 0 else '0'
             grade = str(grades2[user_id])
             rt_count = str(obj['retweet_count'])
-            data = hashtags + ', ' + mentions + ', ' + link + ', ' + grade + ', ' + rt_count + "\n"
+            data = hashtags + ', ' + mentions + ', ' + link + ', ' + grade +\
+                 ', ' + str(total_favs[user_id]) + ',' + rt_count + "\n"
             data_file.write(data)
     data_file.close()
     print 'err_count: ', err_count, 'total_tweets: ', total_cnt
@@ -214,7 +219,10 @@ def run():
 
     load_dicts()
     global followers_dic, grades_dic, grades_dic2, g
-    g = snap.LoadEdgeList(snap.PNGraph, "good_graph.csv", 0, 1)
+    g_u = snap.LoadEdgeList(snap.PUNGraph, "good_graph.csv", 0, 1)
+    g = snap.PNGraph_New()
+    g = snap.ConvertGraph_PNGraph_PUNGraph(g_u, g)
+
     
     # followers = snap.TIntPrV()
     # snap.GetNodeInDegV(g, followers)
