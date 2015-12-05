@@ -2,6 +2,8 @@ import snap, json, random
 total_tweets = {}
 retweeted_by = {}
 fav_count = {}
+# grades1 = {}
+grades2 = {}
 # retweets_count = {}
 grades = {}
 MAX = 19914
@@ -100,8 +102,9 @@ def calc_baseline():
     ###testing
     print '**** training is finished, going to test ****'
     err_sum = 0
+    err_count = 0
     for f_name in test_files:
-        f = open('../StreamingAPITrackData/' + f_name)
+        f = open('../StreamingAPITrackData/' + f_name, 'r')
         print 'analysing file: ', f_name
         for l in f:
             try:
@@ -118,14 +121,60 @@ def calc_baseline():
                 pred = average
             real_rt_count = obj['retweet_count']
             err = pow(pred - real_rt_count, 2)
+            # print err
             err_sum += err
-    final_err = err_sum/62.0
+            err_count += 1
+    final_err = err_sum*1.0/err_count
     print 'final_err: ', final_err
+    # err = 1568465.62994
  
+def load_grades():
+    global grades2
+    grades2_file = open('grades2.txt', 'r')
+    grades2 = eval(grades2_file.read())
 
 def create_data_frames():
     load_dicts()
-    global total_tweets, retweeted_by
+    load_grades()
+    data_file = open('data.csv', 'w')
+    data_file.write('hashtags, mentions, link, grade, rt_count')
+    global total_tweets, retweeted_by, grades2
+
+    # train_files = random.sample(json_files, 2)
+    json_files = [f for f in listdir('../StreamingAPITrackData') if f.endswith('.json')]
+    # json_files = json_files[:2]
+
+    err_count = 0
+    total_cnt = 0
+
+    for f_name in json_files:
+        f = open('../StreamingAPITrackData/' + f_name, 'r')
+        print 'analysing file: ', f_name
+        for l in f:
+            try:
+                obj = json.loads(l)
+            except Exception as e:
+                continue
+            if 'user' not in obj:
+                continue
+            user_id = obj['user']['id']
+            if user_id not in grades2:
+                err_count += 1
+                continue
+            total_cnt += 1
+            hashtags = str(len(obj['entities']['hashtags'])) if 'hashtags' in obj['entities'] else '0'
+            mentions = str(len(obj['entities']['user_mentions'])) if 'user_mentions' in obj['entities'] else '0'
+            link = '1' if 'urls' in obj['entities'] and len(obj['entities']['urls']) > 0 else '0'
+            grade = str(grades2[user_id])
+            rt_count = str(obj['retweet_count'])
+            data = hashtags + ', ' + mentions + ', ' + link + ', ' + grade + ', ' + rt_count + "\n"
+            data_file.write(data)
+    data_file.close()
+    print 'err_count: ', err_count, 'total_tweets: ', total_cnt
+
+
+
+
 
 
 
