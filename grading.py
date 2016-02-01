@@ -63,7 +63,8 @@ def count():
     fav_file.write(str(fav_count))
 
 def calc_baseline():
-    global err_count
+    load_grades()
+    global err_count, grades2
     json_files = [f for f in listdir('../StreamingAPITrackData') if f.endswith('.json')]
 
     # train_files = random.sample(json_files, 2)
@@ -72,9 +73,11 @@ def calc_baseline():
     total_tweets = {}
     retweeted_by = {}
     fav_count = {}
+    c = 0
     for f_name in train_files:
         f = open('../StreamingAPITrackData/' + f_name)
-        print 'analysing file: ', f_name
+        print 'analysing file:(%d/): %s' %(c, f_name)
+        c +=1
         for l in f:
             try:
                 obj = json.loads(l)
@@ -83,6 +86,8 @@ def calc_baseline():
             if 'user' not in obj:
                 continue
             usr_id = obj['user']['id']
+            if usr_id not in grades2:
+                continue
             if usr_id not in total_tweets:
                 total_tweets[usr_id] = 0
             if usr_id not in fav_count:
@@ -105,7 +110,8 @@ def calc_baseline():
     err_count = 0
     for f_name in test_files:
         f = open('../StreamingAPITrackData/' + f_name, 'r')
-        print 'analysing file: ', f_name
+        print 'analysing file:(%d/): %s' %(c, f_name)
+        c +=1
         for l in f:
             try:
                 obj = json.loads(l)
@@ -113,7 +119,10 @@ def calc_baseline():
                 continue
             if 'user' not in obj:
                 continue
+
             user = obj['user']['id']
+            if user not in grades2:
+                continue
             pred = 0
             if user in total_tweets and user in retweeted_by:
                 pred = retweeted_by[user]*1.0/total_tweets[user]
@@ -123,6 +132,7 @@ def calc_baseline():
             err = pow(pred - real_rt_count, 2)
             # print err
             err_sum += err
+            # print 'err: ', err
             err_count += 1
     final_err = err_sum*1.0/err_count
     print 'final_err: ', final_err
@@ -138,10 +148,12 @@ def load_grades():
     total_favs = eval(fav_file.read())
 
 def create_data_frames():
+    print 'loading dict'
     load_dicts()
+    print 'loading grades2'
     load_grades()
     data_file = open('data.csv', 'w')
-    data_file.write('hashtags, mentions, link, grade, fav_count, rt_count\n')
+    data_file.write('hashtags, mentions, link, rt_count\n')
     global total_tweets, retweeted_by, grades2, total_favs
 
     # train_files = random.sample(json_files, 2)
@@ -151,9 +163,12 @@ def create_data_frames():
     err_count = 0
     total_cnt = 0
 
+    idx = 0
+
     for f_name in json_files:
         f = open('../StreamingAPITrackData/' + f_name, 'r')
-        print 'analysing file: ', f_name
+        print 'analysing file (%d/308):%s' %(idx+1, f_name)
+        idx += 1
         for l in f:
             try:
                 obj = json.loads(l)
@@ -171,15 +186,22 @@ def create_data_frames():
             link = '1' if 'urls' in obj['entities'] and len(obj['entities']['urls']) > 0 else '0'
             grade = str(grades2[user_id])
             rt_count = str(obj['retweet_count'])
+            rt_user_grade = '0'
+            if 'retweeted_status' in obj:
+                if 'user' in obj['retweeted_status']:
+                    rt_usr = obj['retweeted_status']['user']['id']
+                    rt_user_grade = str(grades2[rt_usr]) if rt_usr in grades2 else '0'
+            
             data = hashtags + ', ' + mentions + ', ' + link + ', ' + grade +\
-                 ', ' + str(total_favs[user_id]) + ',' + rt_count + "\n"
+                 ', ' + rt_user_grade + ', ' + str(total_favs[user_id]) + ',' + rt_count + "\n"
             data_file.write(data)
     data_file.close()
     print 'err_count: ', err_count, 'total_tweets: ', total_cnt
 
 
 
-
+#err_count:  8443637 total_tweets:  2299595
+# final error without rt_grade: 633667.1274
 
 
 
@@ -188,8 +210,8 @@ def create_graph():
     fout = open('good_graph.csv', 'w')
     for l in f:
         p = l.split(',')
-        if p[0] == '-1' or p[1] == '-1':
-            continue
+        # if p[0] == '-1' or p[1] == '-1':
+        #     continue
         fout.write(p[0]+' '+p[1]+'\n')
     fout.close()
 
@@ -219,9 +241,9 @@ def run():
 
     load_dicts()
     global followers_dic, grades_dic, grades_dic2, g
-    g_u = snap.LoadEdgeList(snap.PUNGraph, "good_graph.csv", 0, 1)
-    g = snap.PNGraph_New()
-    g = snap.ConvertGraph_PNGraph_PUNGraph(g_u, g)
+    g = snap.LoadEdgeList(snap.PUNGraph, "good_graph.csv", 0, 1)
+    # g = snap.PNGraph_New()
+    # g = snap.ConvertGraph_PNGraph_PUNGraph(g_u, g)
 
     
     # followers = snap.TIntPrV()
